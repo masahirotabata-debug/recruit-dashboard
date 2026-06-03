@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>採用LP分析ダッシュボード</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Helvetica Neue', sans-serif; background: #f0f2f5; color: #333; }
+  header { background: #1a73e8; color: white; padding: 20px 30px; }
+  header h1 { font-size: 22px; }
+  header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+  .period-tabs { display: flex; gap: 10px; padding: 20px 30px; background: white; border-bottom: 1px solid #e0e0e0; }
+  .period-tabs button { padding: 8px 24px; border: 2px solid #1a73e8; border-radius: 20px; background: white; color: #1a73e8; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+  .period-tabs button.active { background: #1a73e8; color: white; }
+  .dashboard { padding: 24px 30px; }
+  .section-title { font-size: 16px; font-weight: bold; color: #555; margin: 20px 0 12px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .card .label { font-size: 13px; color: #888; margin-bottom: 8px; }
+  .card .value { font-size: 32px; font-weight: bold; color: #1a73e8; }
+  .card .sub { font-size: 12px; color: #aaa; margin-top: 4px; }
+  .social-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .social-total { font-size: 13px; color: #888; margin-bottom: 12px; }
+  .social-total span { font-size: 24px; font-weight: bold; color: #1a73e8; margin-left: 8px; }
+  .social-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .social-row:last-child { border-bottom: none; }
+  .social-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .ig { background: #f09433; }
+  .tw { background: #000; }
+  .tt { background: #010101; }
+  .social-name { flex: 1; font-size: 14px; }
+  .social-value { font-size: 18px; font-weight: bold; color: #333; }
+  .loading { text-align: center; padding: 60px; color: #888; }
+  .period-label { font-size: 12px; color: #999; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📊 採用LP分析ダッシュボード</h1>
+  <p>株式会社エージェント AGDS — デジタルシフトソリューション事業部</p>
+</header>
+
+<div class="period-tabs">
+  <button class="active" onclick="loadData('daily')">昨日</button>
+  <button onclick="loadData('weekly')">直近7日</button>
+  <button onclick="loadData('monthly')">直近30日</button>
+</div>
+
+<div class="dashboard">
+  <div id="content" class="loading">データを読み込み中...</div>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzltZbwr47yteCDZRAfDzp3_NeRAW6f2omK6abUpq3jSeRfnTKstvUYObu_f5xPyts/exec';
+
+function loadData(period) {
+  // タブの切り替え
+  document.querySelectorAll('.period-tabs button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  document.getElementById('content').innerHTML = '<div class="loading">データを読み込み中...</div>';
+  
+  fetch(`${API_URL}?period=${period}`)
+    .then(r => r.json())
+    .then(d => renderDashboard(d))
+    .catch(e => {
+      document.getElementById('content').innerHTML = '<div class="loading">データの取得に失敗しました。しばらく経ってから再試行してください。</div>';
+    });
+}
+
+function renderDashboard(d) {
+  const periodLabel = d.startDate === d.endDate ? d.startDate : `${d.startDate} 〜 ${d.endDate}`;
+  
+  document.getElementById('content').innerHTML = `
+    <div class="period-label">📅 集計期間：${periodLabel}</div>
+    
+    <div class="section-title">📈 基本指標</div>
+    <div class="cards">
+      <div class="card">
+        <div class="label">👥 アクティブユーザー数</div>
+        <div class="value">${d.activeUsers.toLocaleString()}</div>
+        <div class="sub">LPを訪問した人数</div>
+      </div>
+      <div class="card">
+        <div class="label">🆕 新規ユーザー数</div>
+        <div class="value">${d.newUsers.toLocaleString()}</div>
+        <div class="sub">初めてLPを訪れた人数</div>
+      </div>
+      <div class="card">
+        <div class="label">🎯 キーイベント数</div>
+        <div class="value">${d.eventCount.toLocaleString()}</div>
+        <div class="sub">応募ボタンクリック数</div>
+      </div>
+    </div>
+
+    <div class="section-title">📱 流入元</div>
+    <div class="cards">
+      <div class="social-card">
+        <div class="social-total">オーガニックソーシャル合計 <span>${d.organic.toLocaleString()}</span></div>
+        <div class="social-row">
+          <div class="social-icon ig">📸</div>
+          <div class="social-name">Instagram</div>
+          <div class="social-value">${d.instagram.toLocaleString()}</div>
+        </div>
+        <div class="social-row">
+          <div class="social-icon tw">𝕏</div>
+          <div class="social-name">X（Twitter）</div>
+          <div class="social-value">${d.twitter.toLocaleString()}</div>
+        </div>
+        <div class="social-row">
+          <div class="social-icon tt">🎵</div>
+          <div class="social-name">TikTok</div>
+          <div class="social-value">${d.tiktok.toLocaleString()}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="label">🔍 オーガニックサーチ</div>
+        <div class="value">${d.organicSearch.toLocaleString()}</div>
+        <div class="sub">Google・Yahoo検索経由</div>
+      </div>
+      <div class="card">
+        <div class="label">🔗 ダイレクト</div>
+        <div class="value">${d.direct.toLocaleString()}</div>
+        <div class="sub">URL直接入力・LINE経由</div>
+      </div>
+    </div>
+  `;
+}
+
+// 初期読み込み
+loadData('daily');
+</script>
+</body>
+</html>
