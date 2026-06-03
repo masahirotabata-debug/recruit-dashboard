@@ -4,18 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>採用LP分析ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Helvetica Neue', sans-serif; background: #f0f2f5; color: #333; }
   header { background: #1a73e8; color: white; padding: 20px 30px; }
   header h1 { font-size: 22px; }
   header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
-  .period-tabs { display: flex; gap: 10px; padding: 20px 30px; background: white; border-bottom: 1px solid #e0e0e0; }
+  .period-tabs { display: flex; gap: 10px; padding: 20px 30px; background: white; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
   .period-tabs button { padding: 8px 24px; border: 2px solid #1a73e8; border-radius: 20px; background: white; color: #1a73e8; font-size: 14px; cursor: pointer; transition: all 0.2s; }
   .period-tabs button.active { background: #1a73e8; color: white; }
   .dashboard { padding: 24px 30px; }
   .section-title { font-size: 16px; font-weight: bold; color: #555; margin: 20px 0 12px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; }
   .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   .card .label { font-size: 13px; color: #888; margin-bottom: 8px; }
   .card .value { font-size: 32px; font-weight: bold; color: #1a73e8; }
@@ -30,6 +31,8 @@
   .social-value { font-size: 18px; font-weight: bold; color: #333; }
   .loading { text-align: center; padding: 60px; color: #888; }
   .period-label { font-size: 12px; color: #999; margin-bottom: 20px; }
+  .chart-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
+  .chart-card h3 { font-size: 14px; color: #555; margin-bottom: 16px; }
 </style>
 </head>
 <body>
@@ -41,8 +44,9 @@
 
 <div class="period-tabs">
   <button class="active" onclick="loadData('daily', this)">昨日</button>
-  <button onclick="loadData('weekly', this)">直近7日</button>
-  <button onclick="loadData('monthly', this)">直近30日</button>
+  <button onclick="loadData('weekly', this)">直近7日間</button>
+  <button onclick="loadData('weekly_trend', this)">週次</button>
+  <button onclick="loadData('monthly_trend', this)">月次</button>
 </div>
 
 <div class="dashboard">
@@ -51,11 +55,14 @@
 
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbzltZbwr47yteCDZRAfDzp3_NeRAW6f2omK6abUpq3jSeRfnTKstvUYObu_f5xPyts/exec';
+let chartInstances = [];
 
 function loadData(period, btn) {
   document.querySelectorAll('.period-tabs button').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   document.getElementById('content').innerHTML = '<div class="loading">データを読み込み中...</div>';
+  chartInstances.forEach(c => c.destroy());
+  chartInstances = [];
 
   const script = document.createElement('script');
   window.handleData = function(d) { renderDashboard(d); };
@@ -63,10 +70,9 @@ function loadData(period, btn) {
   document.body.appendChild(script);
 }
 
-function renderDashboard(d) {
+function renderSummary(d) {
   const periodLabel = d.startDate === d.endDate ? d.startDate : d.startDate + ' 〜 ' + d.endDate;
-  document.getElementById('content').innerHTML =
-    '<div class="period-label">📅 集計期間：' + periodLabel + '</div>' +
+  return '<div class="period-label">📅 集計期間：' + periodLabel + '</div>' +
     '<div class="section-title">📈 基本指標</div>' +
     '<div class="cards">' +
       '<div class="card"><div class="label">👥 アクティブユーザー数</div><div class="value">' + d.activeUsers.toLocaleString() + '</div><div class="sub">LPを訪問した人数</div></div>' +
@@ -84,6 +90,43 @@ function renderDashboard(d) {
       '<div class="card"><div class="label">🔍 オーガニックサーチ</div><div class="value">' + d.organicSearch.toLocaleString() + '</div><div class="sub">Google・Yahoo検索経由</div></div>' +
       '<div class="card"><div class="label">🔗 ダイレクト</div><div class="value">' + d.direct.toLocaleString() + '</div><div class="sub">URL直接入力・LINE経由</div></div>' +
     '</div>';
+}
+
+function renderChart(canvasId, labels, datasets) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+  chartInstances.push(chart);
+}
+
+function renderDashboard(d) {
+  let html = renderSummary(d);
+
+  if (d.trend && d.trend.length > 0) {
+    html += '<div class="section-title">📉 推移グラフ</div>';
+    html += '<div class="chart-card"><h3>アクティブユーザー数・新規ユーザー数の推移</h3><canvas id="chart1"></canvas></div>';
+    html += '<div class="chart-card"><h3>キーイベント数の推移</h3><canvas id="chart2"></canvas></div>';
+  }
+
+  document.getElementById('content').innerHTML = html;
+
+  if (d.trend && d.trend.length > 0) {
+    const labels = d.trend.map(t => t.label);
+    renderChart('chart1', labels, [
+      { label: 'アクティブユーザー数', data: d.trend.map(t => t.activeUsers), borderColor: '#1a73e8', backgroundColor: 'rgba(26,115,232,0.1)', tension: 0.3, fill: true },
+      { label: '新規ユーザー数', data: d.trend.map(t => t.newUsers), borderColor: '#34a853', backgroundColor: 'rgba(52,168,83,0.1)', tension: 0.3, fill: true }
+    ]);
+    renderChart('chart2', labels, [
+      { label: 'キーイベント数', data: d.trend.map(t => t.eventCount), borderColor: '#ea4335', backgroundColor: 'rgba(234,67,53,0.1)', tension: 0.3, fill: true }
+    ]);
+  }
 }
 
 loadData('daily', document.querySelector('.period-tabs button'));
