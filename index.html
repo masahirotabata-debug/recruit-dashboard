@@ -26,9 +26,6 @@
   .social-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
   .social-row:last-child { border-bottom: none; }
   .social-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-  .ig { background: #f09433; }
-  .tw { background: #000; }
-  .tt { background: #010101; }
   .social-name { flex: 1; font-size: 14px; }
   .social-value { font-size: 18px; font-weight: bold; color: #333; }
   .loading { text-align: center; padding: 60px; color: #888; }
@@ -43,9 +40,9 @@
 </header>
 
 <div class="period-tabs">
-  <button class="active" onclick="loadData('daily')">昨日</button>
-  <button onclick="loadData('weekly')">直近7日</button>
-  <button onclick="loadData('monthly')">直近30日</button>
+  <button class="active" onclick="loadData('daily', this)">昨日</button>
+  <button onclick="loadData('weekly', this)">直近7日</button>
+  <button onclick="loadData('monthly', this)">直近30日</button>
 </div>
 
 <div class="dashboard">
@@ -55,82 +52,41 @@
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbzltZbwr47yteCDZRAfDzp3_NeRAW6f2omK6abUpq3jSeRfnTKstvUYObu_f5xPyts/exec';
 
-function loadData(period) {
-  // タブの切り替え
+function loadData(period, btn) {
   document.querySelectorAll('.period-tabs button').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  
+  if (btn) btn.classList.add('active');
   document.getElementById('content').innerHTML = '<div class="loading">データを読み込み中...</div>';
-  
-  fetch(`${API_URL}?period=${period}`)
-    .then(r => r.json())
-    .then(d => renderDashboard(d))
-    .catch(e => {
-      document.getElementById('content').innerHTML = '<div class="loading">データの取得に失敗しました。しばらく経ってから再試行してください。</div>';
-    });
+
+  const script = document.createElement('script');
+  window.handleData = function(d) { renderDashboard(d); };
+  script.src = API_URL + '?period=' + period + '&callback=handleData';
+  document.body.appendChild(script);
 }
 
 function renderDashboard(d) {
-  const periodLabel = d.startDate === d.endDate ? d.startDate : `${d.startDate} 〜 ${d.endDate}`;
-  
-  document.getElementById('content').innerHTML = `
-    <div class="period-label">📅 集計期間：${periodLabel}</div>
-    
-    <div class="section-title">📈 基本指標</div>
-    <div class="cards">
-      <div class="card">
-        <div class="label">👥 アクティブユーザー数</div>
-        <div class="value">${d.activeUsers.toLocaleString()}</div>
-        <div class="sub">LPを訪問した人数</div>
-      </div>
-      <div class="card">
-        <div class="label">🆕 新規ユーザー数</div>
-        <div class="value">${d.newUsers.toLocaleString()}</div>
-        <div class="sub">初めてLPを訪れた人数</div>
-      </div>
-      <div class="card">
-        <div class="label">🎯 キーイベント数</div>
-        <div class="value">${d.eventCount.toLocaleString()}</div>
-        <div class="sub">応募ボタンクリック数</div>
-      </div>
-    </div>
-
-    <div class="section-title">📱 流入元</div>
-    <div class="cards">
-      <div class="social-card">
-        <div class="social-total">オーガニックソーシャル合計 <span>${d.organic.toLocaleString()}</span></div>
-        <div class="social-row">
-          <div class="social-icon ig">📸</div>
-          <div class="social-name">Instagram</div>
-          <div class="social-value">${d.instagram.toLocaleString()}</div>
-        </div>
-        <div class="social-row">
-          <div class="social-icon tw">𝕏</div>
-          <div class="social-name">X（Twitter）</div>
-          <div class="social-value">${d.twitter.toLocaleString()}</div>
-        </div>
-        <div class="social-row">
-          <div class="social-icon tt">🎵</div>
-          <div class="social-name">TikTok</div>
-          <div class="social-value">${d.tiktok.toLocaleString()}</div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="label">🔍 オーガニックサーチ</div>
-        <div class="value">${d.organicSearch.toLocaleString()}</div>
-        <div class="sub">Google・Yahoo検索経由</div>
-      </div>
-      <div class="card">
-        <div class="label">🔗 ダイレクト</div>
-        <div class="value">${d.direct.toLocaleString()}</div>
-        <div class="sub">URL直接入力・LINE経由</div>
-      </div>
-    </div>
-  `;
+  const periodLabel = d.startDate === d.endDate ? d.startDate : d.startDate + ' 〜 ' + d.endDate;
+  document.getElementById('content').innerHTML =
+    '<div class="period-label">📅 集計期間：' + periodLabel + '</div>' +
+    '<div class="section-title">📈 基本指標</div>' +
+    '<div class="cards">' +
+      '<div class="card"><div class="label">👥 アクティブユーザー数</div><div class="value">' + d.activeUsers.toLocaleString() + '</div><div class="sub">LPを訪問した人数</div></div>' +
+      '<div class="card"><div class="label">🆕 新規ユーザー数</div><div class="value">' + d.newUsers.toLocaleString() + '</div><div class="sub">初めてLPを訪れた人数</div></div>' +
+      '<div class="card"><div class="label">🎯 キーイベント数</div><div class="value">' + d.eventCount.toLocaleString() + '</div><div class="sub">応募ボタンクリック数</div></div>' +
+    '</div>' +
+    '<div class="section-title">📱 流入元</div>' +
+    '<div class="cards">' +
+      '<div class="social-card">' +
+        '<div class="social-total">オーガニックソーシャル合計 <span>' + d.organic.toLocaleString() + '</span></div>' +
+        '<div class="social-row"><div class="social-icon">📸</div><div class="social-name">Instagram</div><div class="social-value">' + d.instagram.toLocaleString() + '</div></div>' +
+        '<div class="social-row"><div class="social-icon">𝕏</div><div class="social-name">X（Twitter）</div><div class="social-value">' + d.twitter.toLocaleString() + '</div></div>' +
+        '<div class="social-row"><div class="social-icon">🎵</div><div class="social-name">TikTok</div><div class="social-value">' + d.tiktok.toLocaleString() + '</div></div>' +
+      '</div>' +
+      '<div class="card"><div class="label">🔍 オーガニックサーチ</div><div class="value">' + d.organicSearch.toLocaleString() + '</div><div class="sub">Google・Yahoo検索経由</div></div>' +
+      '<div class="card"><div class="label">🔗 ダイレクト</div><div class="value">' + d.direct.toLocaleString() + '</div><div class="sub">URL直接入力・LINE経由</div></div>' +
+    '</div>';
 }
 
-// 初期読み込み
-loadData('daily');
+loadData('daily', document.querySelector('.period-tabs button'));
 </script>
 </body>
 </html>
