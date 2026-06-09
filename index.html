@@ -92,6 +92,8 @@ function renderSummary(d) {
     '</div>';
 }
 
+const integerTicks = { stepSize: 1, precision: 0 };
+
 function renderChart(canvasId, labels, datasets) {
   const ctx = document.getElementById(canvasId).getContext('2d');
   const chart = new Chart(ctx, {
@@ -100,7 +102,7 @@ function renderChart(canvasId, labels, datasets) {
     options: {
       responsive: true,
       plugins: { legend: { position: 'top' } },
-      scales: { y: { beginAtZero: true } }
+      scales: { y: { beginAtZero: true, ticks: integerTicks } }
     }
   });
   chartInstances.push(chart);
@@ -146,7 +148,7 @@ function renderDashboard(d) {
       options: {
         responsive: true,
         plugins: { legend: { position: 'top' } },
-        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: integerTicks } }
       }
     });
     chartInstances.push(chart3);
