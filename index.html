@@ -113,18 +113,50 @@ function renderDashboard(d) {
     html += '<div class="section-title">📉 推移グラフ</div>';
     html += '<div class="chart-card"><h3>アクティブユーザー数・新規ユーザー数の推移</h3><canvas id="chart1"></canvas></div>';
     html += '<div class="chart-card"><h3>キーイベント数の推移</h3><canvas id="chart2"></canvas></div>';
+    html += '<div class="chart-card"><h3>オーガニックソーシャルの推移（Instagram / X / TikTok）</h3><canvas id="chart3"></canvas></div>';
+    html += '<div class="chart-card"><h3>オーガニックサーチの推移</h3><canvas id="chart4"></canvas></div>';
+    html += '<div class="chart-card"><h3>ダイレクトの推移</h3><canvas id="chart5"></canvas></div>';
   }
 
   document.getElementById('content').innerHTML = html;
 
   if (d.trend && d.trend.length > 0) {
     const labels = d.trend.map(t => t.label);
+
     renderChart('chart1', labels, [
       { label: 'アクティブユーザー数', data: d.trend.map(t => t.activeUsers), borderColor: '#1a73e8', backgroundColor: 'rgba(26,115,232,0.1)', tension: 0.3, fill: true },
       { label: '新規ユーザー数', data: d.trend.map(t => t.newUsers), borderColor: '#34a853', backgroundColor: 'rgba(52,168,83,0.1)', tension: 0.3, fill: true }
     ]);
+
     renderChart('chart2', labels, [
       { label: 'キーイベント数', data: d.trend.map(t => t.eventCount), borderColor: '#ea4335', backgroundColor: 'rgba(234,67,53,0.1)', tension: 0.3, fill: true }
+    ]);
+
+    const ctx3 = document.getElementById('chart3').getContext('2d');
+    const chart3 = new Chart(ctx3, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Instagram', data: d.trend.map(t => t.instagram || 0), backgroundColor: 'rgba(225,48,108,0.8)' },
+          { label: 'X（Twitter）', data: d.trend.map(t => t.twitter || 0), backgroundColor: 'rgba(29,161,242,0.8)' },
+          { label: 'TikTok', data: d.trend.map(t => t.tiktok || 0), backgroundColor: 'rgba(0,0,0,0.75)' }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+      }
+    });
+    chartInstances.push(chart3);
+
+    renderChart('chart4', labels, [
+      { label: 'オーガニックサーチ', data: d.trend.map(t => t.organicSearch || 0), borderColor: '#fbbc04', backgroundColor: 'rgba(251,188,4,0.1)', tension: 0.3, fill: true }
+    ]);
+
+    renderChart('chart5', labels, [
+      { label: 'ダイレクト', data: d.trend.map(t => t.direct || 0), borderColor: '#9334e6', backgroundColor: 'rgba(147,52,230,0.1)', tension: 0.3, fill: true }
     ]);
   }
 }
